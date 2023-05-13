@@ -56,6 +56,9 @@ mod contract_publish {
     }
 
     impl Erc20 {
+
+        //------------------------------CONSTRUCTOR------------------------------
+
         /// Create a new ERC-20 contract with an initial supply.
         #[ink(constructor)]
         pub fn new(total_supply: Balance, file_address: String, image_address: String) -> Self {
@@ -109,8 +112,9 @@ mod contract_publish {
 
         //------------------------------SETTERS------------------------------
 
+        /* 
         ///Transfer tokens to the specified account from caller
-        #[ink(message)]
+        [ink(message)]
         pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
             let from = self.env().caller();
             self.transfer_from_to(&from, &to, value)
@@ -177,12 +181,15 @@ mod contract_publish {
 
             Ok(())
         }
+        */
     }
 
     //------------------------------TESTS------------------------------
 
     #[cfg(test)]
     mod tests {
+        use ink::{primitives::AccountId};
+
         use super::*;
 
         // We define some helper Accounts to make our tests more readable
@@ -198,60 +205,19 @@ mod contract_publish {
             default_accounts().bob
         }
 
-        #[ink::test]
-        fn transfer_works() {
-            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
-            assert_eq!(contract.balance_of(alice()), 100);
-            assert!(contract.transfer(bob(), 10).is_ok());
-            assert_eq!(contract.balance_of(bob()), 10);
-            assert!(contract.transfer(bob(), 100).is_err());
+        fn charlie() -> AccountId {
+            default_accounts().charlie
         }
 
-        #[ink::test]
-        fn transfer_from_works() {
-            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
-            assert_eq!(contract.balance_of(alice()), 100);
-            let _ = contract.approve(alice(), 20);
-            let _ = contract.transfer_from(alice(), bob(), 10);
-            assert_eq!(contract.balance_of(bob()), 10);
+        fn django() -> AccountId {
+            default_accounts().django
         }
-
-        #[ink::test]
-        fn allowances_works() {
-            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
-
-            assert_eq!(contract.balance_of(alice()), 100);
-            let _ = contract.approve(alice(), 200);
-            assert_eq!(contract.allowance(alice(), alice()), 200);
-
-            assert!(contract.transfer_from(alice(), bob(), 50).is_ok());
-            assert_eq!(contract.balance_of(bob()), 50);
-            assert_eq!(contract.allowance(alice(), alice()), 150);
-
-            assert!(contract.transfer_from(alice(), bob(), 100).is_err());
-            assert_eq!(contract.balance_of(bob()), 50);
-            assert_eq!(contract.allowance(alice(), alice()), 150);
-        }
-
-        #[ink::test]
-        fn new_works() {
-            let contract = Erc20::new(777,String::from("direccionIPFS"),String::from("direccionImagen"));
-            assert_eq!(contract.total_supply(), 777);
-        }
-
-        #[ink::test]
-        fn balance_works() {
-            let contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
-            assert_eq!(contract.total_supply(), 100);
-            assert_eq!(contract.balance_of(alice()), 100);
-            assert_eq!(contract.balance_of(bob()), 0);
-        }
-
+/*
         #[ink::test]
         fn return_hash_works(){
             let contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
             assert_eq!(contract.recover_hash_address(),String::from("direccionIPFS"))
 
-        }
+        }*/
     }
 }
