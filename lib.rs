@@ -2,7 +2,7 @@
 
 #[ink::contract]
 mod contract_publish {
-    use ink::storage::Mapping;
+    //use ink::storage::Mapping;
     use ink_prelude::string::String;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -18,7 +18,7 @@ mod contract_publish {
 
     /// Create storage for a simple ERC-20 contract.
     #[ink(storage)]
-    pub struct Erc20 {
+    pub struct contract_publish {
         ///Owner address
         owner: AccountId,
 
@@ -65,7 +65,7 @@ mod contract_publish {
         value: Balance,
     }
 
-    impl Erc20 {
+    impl contract_publish {
 
         //------------------------------CONSTRUCTOR------------------------------
 
@@ -137,6 +137,18 @@ mod contract_publish {
             self.image_address.clone()
         }
         //------------------------------SETTERS------------------------------
+
+        #[ink(message)]
+        pub fn buy_song(&mut self, payment: Balance) -> Result<()>{ 
+            let buyer = self.env().caller();
+
+            if payment < self.recover_song_price().into() {
+                return Err(Error::InsufficientAllowance)
+            }
+
+            Ok(())
+        }
+
 
         /* 
         ///Transfer tokens to the specified account from caller
@@ -238,6 +250,34 @@ mod contract_publish {
         fn django() -> AccountId {
             default_accounts().django
         }
+
+        #[ink::test]
+        fn publish_works(){
+            let contract = contract_publish::new_publish(
+            "La bebe - ringtone".to_string(), 
+            1, 
+            "QmZ41fazG24A6H4bicrM2cTPjLWxxsX8tQkrAPzCu2e8AB".to_string(),
+            "QmZ2Fg6zDt8p7SLsuVAL2spGAAY2rPp7JShAY3Xk6Ndt8o".to_string());
+            assert_eq!(contract.recover_hash_address(),"QmZ41fazG24A6H4bicrM2cTPjLWxxsX8tQkrAPzCu2e8AB");
+            assert_eq!(contract.recover_image_address(),"QmZ2Fg6zDt8p7SLsuVAL2spGAAY2rPp7JShAY3Xk6Ndt8o");
+            assert_eq!(contract.recover_song_name(),"La bebe - ringtone");
+            assert_eq!(contract.recover_song_price(),1);
+        }
+
+        #[ink::test]
+        fn buy_song_works(){
+            let contract = contract_publish::new_publish(
+            "La bebe - ringtone".to_string(), 
+            1, 
+            "QmZ41fazG24A6H4bicrM2cTPjLWxxsX8tQkrAPzCu2e8AB".to_string(),
+            "QmZ2Fg6zDt8p7SLsuVAL2spGAAY2rPp7JShAY3Xk6Ndt8o".to_string());
+            assert_eq!(contract.recover_hash_address(),"QmZ41fazG24A6H4bicrM2cTPjLWxxsX8tQkrAPzCu2e8AB");
+            assert_eq!(contract.recover_image_address(),"QmZ2Fg6zDt8p7SLsuVAL2spGAAY2rPp7JShAY3Xk6Ndt8o");
+            assert_eq!(contract.recover_song_name(),"La bebe - ringtone");
+            assert_eq!(contract.recover_song_price(),1);
+        }
+
+
 
 
 
