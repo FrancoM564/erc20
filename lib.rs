@@ -3,6 +3,7 @@
 #[ink::contract]
 mod contract_publish {
     use ink::storage::Mapping;
+    use ink_prelude::string::String;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -25,6 +26,15 @@ mod contract_publish {
 
         /// Balances that can be transferred by non-owners: (owner, spender) -> allowed
         allowances: Mapping<(AccountId, AccountId), Balance>,
+
+        ///File hash address on IPFS
+        file_address: String,
+
+        ///List of allowed users
+        authorized_users: Vec<AccountId>,
+
+        ///Watermarked image address
+        image_address: String,
     }
 
     #[ink(event)]
@@ -48,11 +58,12 @@ mod contract_publish {
     impl Erc20 {
         /// Create a new ERC-20 contract with an initial supply.
         #[ink(constructor)]
-        pub fn new(total_supply: Balance) -> Self {
+        pub fn new(total_supply: Balance, file_address: String, image_address: String) -> Self {
             let mut balances = Mapping::default();
             let caller = Self::env().caller();
             balances.insert(caller, &total_supply);
             let allowances = Mapping::default();
+            let authorized_users : Vec<AccountId> = vec![];
 
             Self::env().emit_event(Transfer {
                 from: None,
@@ -64,14 +75,15 @@ mod contract_publish {
                 total_supply,
                 balances,
                 allowances,
+                file_address,
+                authorized_users,
+                image_address
             }
         }
 
-        #[ink(message)]
-        pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
-            let from = self.env().caller();
-            self.transfer_from_to(&from, &to, value)
-        }
+        //Messages
+
+        //------------------------------GETTERS------------------------------
 
         /// Returns the total token supply.
         #[ink(message)]
@@ -85,6 +97,26 @@ mod contract_publish {
             self.balances.get(owner).unwrap_or_default()
         }
 
+        ///Returns allowance balance for the specified owner and spender
+        #[ink(message)]
+        pub fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
+            self.allowances.get((owner, spender)).unwrap_or_default()
+        }
+
+        pub fn recover_hash_address(&self) -> String{
+            self.file_address.clone()
+        }
+
+        //------------------------------SETTERS------------------------------
+
+        ///Transfer tokens to the specified account from caller
+        #[ink(message)]
+        pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
+            let from = self.env().caller();
+            self.transfer_from_to(&from, &to, value)
+        }
+        
+        ///Allow an spender acount to spend some tokens from caller
         #[ink(message)]
         pub fn approve(&mut self, spender: AccountId, value: Balance) -> Result<()> {
             let owner = self.env().caller();
@@ -98,12 +130,7 @@ mod contract_publish {
 
             Ok(())
         }
-
-        #[ink(message)]
-        pub fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
-            self.allowances.get((owner, spender)).unwrap_or_default()
-        }
-
+        
         /// Transfers tokens on the behalf of the `from` account to the `to account
         #[ink(message)]
         pub fn transfer_from(
@@ -124,6 +151,8 @@ mod contract_publish {
 
             Ok(())
         }
+
+        //------------------------------HELPERS------------------------------
 
         fn transfer_from_to(
             &mut self,
@@ -150,6 +179,8 @@ mod contract_publish {
         }
     }
 
+    //------------------------------TESTS------------------------------
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -169,7 +200,7 @@ mod contract_publish {
 
         #[ink::test]
         fn transfer_works() {
-            let mut contract = Erc20::new(100);
+            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
             assert_eq!(contract.balance_of(alice()), 100);
             assert!(contract.transfer(bob(), 10).is_ok());
             assert_eq!(contract.balance_of(bob()), 10);
@@ -178,7 +209,7 @@ mod contract_publish {
 
         #[ink::test]
         fn transfer_from_works() {
-            let mut contract = Erc20::new(100);
+            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
             assert_eq!(contract.balance_of(alice()), 100);
             let _ = contract.approve(alice(), 20);
             let _ = contract.transfer_from(alice(), bob(), 10);
@@ -187,7 +218,8 @@ mod contract_publish {
 
         #[ink::test]
         fn allowances_works() {
-            let mut contract = Erc20::new(100);
+            let mut contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
+
             assert_eq!(contract.balance_of(alice()), 100);
             let _ = contract.approve(alice(), 200);
             assert_eq!(contract.allowance(alice(), alice()), 200);
@@ -203,16 +235,23 @@ mod contract_publish {
 
         #[ink::test]
         fn new_works() {
-            let contract = Erc20::new(777);
+            let contract = Erc20::new(777,String::from("direccionIPFS"),String::from("direccionImagen"));
             assert_eq!(contract.total_supply(), 777);
         }
 
         #[ink::test]
         fn balance_works() {
-            let contract = Erc20::new(100);
+            let contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
             assert_eq!(contract.total_supply(), 100);
             assert_eq!(contract.balance_of(alice()), 100);
             assert_eq!(contract.balance_of(bob()), 0);
+        }
+
+        #[ink::test]
+        fn return_hash_works(){
+            let contract = Erc20::new(100,String::from("direccionIPFS"),String::from("direccionImagen"));
+            assert_eq!(contract.recover_hash_address(),String::from("direccionIPFS"))
+
         }
     }
 }
