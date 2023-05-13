@@ -19,13 +19,14 @@ mod contract_publish {
     /// Create storage for a simple ERC-20 contract.
     #[ink(storage)]
     pub struct Erc20 {
-        /// Total token supply.
-        total_supply: Balance,
-        /// Mapping from owner to number of owned tokens.
-        balances: Mapping<AccountId, Balance>,
+        ///Owner address
+        owner: AccountId,
 
-        /// Balances that can be transferred by non-owners: (owner, spender) -> allowed
-        allowances: Mapping<(AccountId, AccountId), Balance>,
+        /// Song name on String
+        song_name: String,
+
+        ///Song price
+        song_value: u32,
 
         ///File hash address on IPFS
         file_address: String,
@@ -35,6 +36,15 @@ mod contract_publish {
 
         ///Watermarked image address
         image_address: String,
+    }
+
+    #[ink(event)]
+    pub struct Publish {
+        #[ink(topic)]
+        from: Option<AccountId>,
+        #[ink(topic)]
+        name: String,
+        value: u32,
     }
 
     #[ink(event)]
@@ -61,32 +71,32 @@ mod contract_publish {
 
         /// Create a new ERC-20 contract with an initial supply.
         #[ink(constructor)]
-        pub fn new(total_supply: Balance, file_address: String, image_address: String) -> Self {
-            let mut balances = Mapping::default();
-            let caller = Self::env().caller();
-            balances.insert(caller, &total_supply);
-            let allowances = Mapping::default();
+        pub fn new_publish(song_name: String, song_price: u32,file_address: String, image_address: String) -> Self {
+
+            let owner = Self::env().caller();
             let authorized_users : Vec<AccountId> = vec![];
 
-            Self::env().emit_event(Transfer {
-                from: None,
-                to: Some(caller),
-                value: total_supply,
+            Self::env().emit_event(Publish{
+                from: Some(owner),
+                name: song_name.clone(),
+                value: song_price.clone(),
             });
 
             Self {
-                total_supply,
-                balances,
-                allowances,
+                owner,
+                song_name,
+                song_value: song_price,
                 file_address,
                 authorized_users,
-                image_address
+                image_address,
             }
         }
 
         //Messages
 
         //------------------------------GETTERS------------------------------
+
+        /*
 
         /// Returns the total token supply.
         #[ink(message)]
@@ -105,11 +115,27 @@ mod contract_publish {
         pub fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
             self.allowances.get((owner, spender)).unwrap_or_default()
         }
+        */
 
+        #[ink(message)]
+        pub fn recover_song_name(&self) -> String{
+            self.song_name.clone()
+        }
+
+        #[ink(message)]
         pub fn recover_hash_address(&self) -> String{
             self.file_address.clone()
         }
 
+        #[ink(message)]
+        pub fn recover_song_price(&self)-> u32{
+            self.song_value.clone()
+        }
+
+        #[ink(message)]
+        pub fn recover_image_address(&self) ->String{
+            self.image_address.clone()
+        }
         //------------------------------SETTERS------------------------------
 
         /* 
@@ -212,6 +238,9 @@ mod contract_publish {
         fn django() -> AccountId {
             default_accounts().django
         }
+
+
+
 /*
         #[ink::test]
         fn return_hash_works(){
