@@ -105,12 +105,12 @@ mod contract_publish {
         //------------------------------GETTERS------------------------------
         #[ink(message)]
         pub fn recover_song_name(&self) -> String{
-            self.file_address.clone()
+            self.song_name.clone()
         }
 
         #[ink(message)]
         pub fn recover_song_price(&self)-> u128{
-            self.song_value.clone()
+            self.song_value
         }
 
         #[ink(message)]
