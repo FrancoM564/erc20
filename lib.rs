@@ -3,9 +3,10 @@
 #[ink::contract]
 mod contract_publish {
 
+    use ink::env::call::{ExecutionInput, Selector};
+    use ink::env::debug_println;
     use ink::storage::Mapping;
     use ink::prelude::string::String;
-    use ink::prelude::vec::Vec;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -14,6 +15,7 @@ mod contract_publish {
         InsufficientBalance,
         AlreadyOnList,
         TransferError,
+        ContractReportInsertionFailed,
     }
 
     /// Specify the ERC-20 result type.
@@ -23,8 +25,8 @@ mod contract_publish {
     #[ink(storage)]
     pub struct ContractPublish {
 
-        ///Contract balance
-        balance: Balance,
+        ///Reference to report contract
+        report_contract: AccountId,
 
         ///Owner address
         owner: AccountId,
@@ -81,7 +83,7 @@ mod contract_publish {
 
             let owner = Self::env().caller();
             let authorized_users = Mapping::default();
-            let balance = Balance::default();
+            let report_contract = owner;
 
             Self::env().emit_event(Publish{
                 from: owner,
@@ -90,7 +92,7 @@ mod contract_publish {
             });
 
             Self {
-                balance,
+                report_contract,
                 owner,
                 song_name,
                 song_value: song_price,
@@ -113,12 +115,21 @@ mod contract_publish {
             self.song_value
         }
 
-        #[ink(message)]
+        #[ink(message, selector=0xABCD1234)]
         pub fn recover_image_address(&self) ->String{
             self.image_address.clone()
         }
-        
+
+        #[ink(message, selector=0x12341234)]
+        pub fn recover_report_contract_address(&self) -> AccountId{
+            self.report_contract.clone()
+        }
         //------------------------------SETTERS------------------------------
+
+        #[ink(message)]
+        pub fn set_report_contract(&mut self,report_contract_address: AccountId){
+            self.report_contract = report_contract_address
+        }
 
         #[ink(message, payable)]
         pub fn buy_song(&mut self) -> Result<(String,Balance)>{ 
@@ -127,18 +138,31 @@ mod contract_publish {
 
             assert!(caller != self.owner, "The caller is the owner, it doesn't make sense");
 
-            if self.env().transferred_value() < self.recover_song_price() {
-                return Err(Error::InsufficientBalance)
-            }
-
             if self.authorized_users.contains(&self.env().caller()){
                 return Err(Error::AlreadyOnList)
             }
 
+            if self.env().transferred_value() < (self.recover_song_price() +  (self.recover_song_price()/10)){
+                return Err(Error::InsufficientBalance)
+            }
+
             if self.env().transfer(self.owner, self.song_value).is_err(){
-                panic!(
-                    "For some reason the transaction couldn't be completed"
-                )
+                return Err(Error::TransferError);
+            }
+
+            let x = ink::env::call::build_call::<Environment>()
+            .call(self.report_contract)
+            .gas_limit(0)
+            .transferred_value(self.recover_song_price() / 10)
+            .exec_input(
+                ExecutionInput::new(Selector::new([0xA1,0xB2,0xC3,0xD4]))
+                .push_arg(caller)
+            )
+            .returns::<Result<(String,Balance)>>()
+            .invoke();
+
+            if x.is_err(){
+                return Err(Error::ContractReportInsertionFailed)
             }
 
             self.authorized_users.insert(caller,&true);
@@ -171,6 +195,20 @@ mod contract_publish {
             }
 
             return String::from("No has comprado este archivo")
+        }
+
+        #[ink(message, selector=0x12345678)]
+        pub fn is_user_in_list(&self, address : AccountId) -> bool{
+
+            if address == self.owner{
+                return false
+            }
+
+            if self.authorized_users.contains(address){
+                return true
+            }
+
+            return false
         }
 
         //------------------------------HELPERS------------------------------
